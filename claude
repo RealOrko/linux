@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Launch Claude Code in Docker container
+# Mounts current directory as workspace
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check for --nologin flag
+NOLOGIN=false
+ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--nologin" ]; then
+        NOLOGIN=true
+    else
+        ARGS+=("$arg")
+    fi
+done
+
+# Build the latest container
+echo "Building claude-code container..."
+docker build -t claude-code "$SCRIPT_DIR" || exit 1
+
+# Determine if we're running in an interactive terminal
+if [ -t 0 ] && [ -t 1 ]; then
+    TTY_FLAGS="-it"
+else
+    TTY_FLAGS="-i"
+fi
+
+# Build login mount options
+LOGIN_MOUNTS=""
+if [ "$NOLOGIN" = "false" ]; then
+    LOGIN_MOUNTS="-v $HOME/.claude:/home/claude/.claude:rw -v $HOME/.claude.json:/home/claude/.claude.json:rw"
+fi
+
+# Run the container
+docker run $TTY_FLAGS --rm \
+    --network host \
+    --user "$(id -u):$(id -g)" \
+    -v "$(pwd):/home/claude/workspace" \
+    -v "$HOME/.ssh:/home/claude/.ssh:ro" \
+    -v "$SSH_AUTH_SOCK:/ssh-agent" \
+    -e SSH_AUTH_SOCK=/ssh-agent \
+    $LOGIN_MOUNTS \
+    -v "$HOME/.gitconfig:/home/claude/.gitconfig:ro" \
+    -v "/tmp:/tmp" \
+    claude-code claude "--dangerously-skip-permissions" "${ARGS[@]}"
