@@ -47,18 +47,12 @@ mkdir -p "$OUTPUT_DIR"
 
 # Check if .config exists
 if [[ ! -f ".config" ]]; then
-    warn "No .config found. Running build.sh to generate configuration..."
-    if [[ -x "./build.sh" ]]; then
-        # Run build.sh but stop before actual compilation
-        # We just need the config to be set up
-        info "Generating kernel configuration..."
-        # Source the build.sh config section or run make defconfig
-        make defconfig
-        ./scripts/config --disable CONFIG_DEBUG_INFO
-        ./scripts/config --enable CONFIG_LOCALVERSION_AUTO
-        make olddefconfig
+    warn "No .config found. Running config.sh to generate configuration..."
+    if [[ -x "$SCRIPT_DIR/config.sh" ]]; then
+        info "Generating kernel configuration via config.sh..."
+        "$SCRIPT_DIR/config.sh"
     else
-        error "No .config and no build.sh found. Please configure kernel first."
+        error "No .config and no config.sh found. Please configure kernel first."
     fi
 fi
 
