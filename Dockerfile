@@ -107,22 +107,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Install Claude Code globally
 RUN npm install -g @anthropic-ai/claude-code
 
-# Install claude-looper dependencies in a separate location
-# Source code will be mounted at /opt/claude-looper at runtime
-WORKDIR /opt/claude-looper-deps
-COPY package.json package-lock.json ./
-RUN npm install
-
-# Set NODE_PATH so node finds deps even when source is mounted over /opt/claude-looper
-ENV NODE_PATH=/opt/claude-looper-deps/node_modules
-
-# Create mount point for source code
-RUN mkdir -p /opt/claude-looper
-
-# Create wrapper script that preserves working directory
-RUN echo '#!/bin/bash\nexec node /opt/claude-looper/cli.js "$@"' > /usr/local/bin/claude-looper \
-    && chmod +x /usr/local/bin/claude-looper
-
 # Create claude user with sudo access (UID 1000 to match typical host user)
 # First remove any existing user with UID 1000, then create claude user
 RUN existing_user=$(getent passwd 1000 | cut -d: -f1) \
