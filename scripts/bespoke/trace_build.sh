@@ -63,14 +63,14 @@ info "Output directory: $OUTPUT_DIR"
 info "Cleaning build artifacts (keeping .config)..."
 make clean
 
-# Determine compiler to use
-if command -v clang &>/dev/null && [[ -n "${LLVM:-}" ]]; then
-    info "Using LLVM/Clang toolchain"
-    MAKE_ARGS="LLVM=1"
-else
-    info "Using GCC toolchain"
-    MAKE_ARGS=""
-fi
+# Use LLVM toolchain config from config.sh
+LLVM_VERSION="-19"
+MAKE_ARGS="LLVM=$LLVM_VERSION"
+info "Using LLVM/Clang$LLVM_VERSION toolchain"
+
+# Sync config non-interactively to avoid prompts for new options
+info "Syncing config (olddefconfig)..."
+make $MAKE_ARGS olddefconfig
 
 # Build with verbose output
 info "Building kernel with verbose output (this may take a while)..."
