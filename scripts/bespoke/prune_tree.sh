@@ -164,13 +164,69 @@ if [[ $skipped -gt 0 ]]; then
 fi
 
 # ============================================================================
-# PHASE 3: Clean up empty directories
+# PHASE 3: Fix Kconfig references to removed directories
 # ============================================================================
-section "PHASE 3: Clean Empty Directories"
+section "PHASE 3: Fix Kconfig References"
+
+info "Scanning Kconfig files for broken references..."
+KCONFIG_FIXES=0
+
+fix_kconfig_file() {
+    local kconfig_file="$1"
+    local temp_file=$(mktemp)
+    local modified=0
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" =~ ^([[:space:]]*)(source[[:space:]]+\"([^\"]+)\") ]]; then
+            local indent="${BASH_REMATCH[1]}"
+            local source_stmt="${BASH_REMATCH[2]}"
+            local path="${BASH_REMATCH[3]}"
+
+            # Skip template paths with variables like $(SRCARCH)
+            if [[ "$path" == *'$('* ]]; then
+                echo "$line" >> "$temp_file"
+                continue
+            fi
+
+            if [[ ! -f "$path" ]]; then
+                if [[ "$DRY_RUN" == "1" ]]; then
+                    dry "Comment out: $path (in $kconfig_file)"
+                else
+                    echo "${indent}# ${source_stmt}  # pruned" >> "$temp_file"
+                fi
+                modified=1
+                KCONFIG_FIXES=$((KCONFIG_FIXES + 1))
+                continue
+            fi
+        fi
+        echo "$line" >> "$temp_file"
+    done < "$kconfig_file"
+
+    if [[ $modified -eq 1 && "$DRY_RUN" == "0" ]]; then
+        mv "$temp_file" "$kconfig_file"
+        info "Fixed: $kconfig_file"
+    else
+        rm -f "$temp_file"
+    fi
+}
+
+while IFS= read -r kconfig; do
+    fix_kconfig_file "$kconfig"
+done < <(find . -name "Kconfig" -o -name "Kconfig.*" 2>/dev/null | grep -v ".git")
+
+if [[ $KCONFIG_FIXES -gt 0 ]]; then
+    info "Fixed $KCONFIG_FIXES Kconfig source references"
+else
+    info "No broken Kconfig references found"
+fi
+
+# ============================================================================
+# PHASE 4: Clean up empty directories
+# ============================================================================
+section "PHASE 4: Clean Empty Directories"
 
 if [[ "$DRY_RUN" == "0" ]]; then
     info "Removing empty directories..."
-    # Find and remove empty directories (bottom-up)
     find . -type d -empty -delete 2>/dev/null || true
     info "Empty directories cleaned"
 else
@@ -179,10 +235,10 @@ else
 fi
 
 # ============================================================================
-# PHASE 4: Verify build (optional)
+# PHASE 5: Verify build (optional)
 # ============================================================================
 if [[ "$DRY_RUN" == "0" && "$SKIP_VERIFY" == "0" ]]; then
-    section "PHASE 4: Verify Build"
+    section "PHASE 5: Verify Build"
 
     info "Verifying kernel still builds..."
     if make -j"$(nproc)" 2>&1 | tail -20; then

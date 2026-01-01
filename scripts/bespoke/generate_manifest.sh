@@ -151,6 +151,34 @@ info "Finding documentation files..."
 find Documentation/ -type f 2>/dev/null | \
     sed 's|^\./||' | sort > "$MANIFEST_DIR/docs_files.txt" || true
 
+info "Finding asm-generic headers (needed for fallback)..."
+find include/asm-generic/ -type f 2>/dev/null | \
+    sed 's|^\./||' | sort > "$MANIFEST_DIR/asm_generic_files.txt" || true
+
+info "Finding UAPI headers..."
+find include/uapi/ arch/x86/include/uapi/ -type f 2>/dev/null | \
+    sed 's|^\./||' | sort > "$MANIFEST_DIR/uapi_files.txt" || true
+
+info "Finding core include/linux headers..."
+find include/linux/ -type f 2>/dev/null | \
+    sed 's|^\./||' | sort > "$MANIFEST_DIR/linux_headers.txt" || true
+
+info "Finding arch/x86 headers..."
+find arch/x86/include/ -type f 2>/dev/null | \
+    sed 's|^\./||' | sort > "$MANIFEST_DIR/x86_headers.txt" || true
+
+info "Finding core kernel source (has unity builds)..."
+find kernel/ init/ lib/ mm/ fs/ block/ ipc/ security/ crypto/ net/ sound/ -type f 2>/dev/null | \
+    sed 's|^\./||' | sort > "$MANIFEST_DIR/core_kernel.txt" || true
+
+info "Finding arch/x86 source..."
+find arch/x86/ -type f 2>/dev/null | \
+    sed 's|^\./||' | sort > "$MANIFEST_DIR/x86_source.txt" || true
+
+info "Finding include/ directory..."
+find include/ -type f 2>/dev/null | \
+    sed 's|^\./||' | sort > "$MANIFEST_DIR/include_all.txt" || true
+
 # ============================================================================
 # PHASE 4: Find all source files in tree
 # ============================================================================
@@ -179,14 +207,28 @@ cat "$MANIFEST_DIR/all_c.txt" \
 section "PHASE 5: Calculate Required vs Removable Files"
 
 info "Combining required files..."
+# Include compiled sources, headers, build infrastructure, and core kernel
 cat "$MANIFEST_DIR/compiled_c.txt" \
     "$MANIFEST_DIR/compiled_s.txt" \
     "$MANIFEST_DIR/headers.txt" \
+    "$MANIFEST_DIR/kconfig_files.txt" \
+    "$MANIFEST_DIR/makefile_files.txt" \
+    "$MANIFEST_DIR/scripts_files.txt" \
+    "$MANIFEST_DIR/tools_files.txt" \
+    "$MANIFEST_DIR/asm_generic_files.txt" \
+    "$MANIFEST_DIR/uapi_files.txt" \
+    "$MANIFEST_DIR/linux_headers.txt" \
+    "$MANIFEST_DIR/x86_headers.txt" \
+    "$MANIFEST_DIR/core_kernel.txt" \
+    "$MANIFEST_DIR/x86_source.txt" \
+    "$MANIFEST_DIR/include_all.txt" \
     2>/dev/null | sort -u > "$MANIFEST_DIR/required_sources.txt" || true
 
 info "Calculating removable files..."
+# Only remove .c and .S files, not headers (headers are tricky to trace)
 comm -23 "$MANIFEST_DIR/all_sources.txt" \
-         "$MANIFEST_DIR/required_sources.txt" > "$MANIFEST_DIR/removable_files.txt"
+         "$MANIFEST_DIR/required_sources.txt" | \
+    grep -v '\.h$' > "$MANIFEST_DIR/removable_files.txt"
 
 # ============================================================================
 # PHASE 6: Identify removable directories
