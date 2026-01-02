@@ -257,6 +257,14 @@ echo "=== Maximum Performance Kernel Build ==="
 echo "Using LLVM 19 toolchain with $JOBS parallel jobs"
 echo ""
 
+# Create .config from running kernel if it doesn't exist                                                                  
+if [ ! -f .config ]; then                                                                                                 
+    echo "[*] No .config found, copying from running kernel..."                                                           
+    cp /boot/config-$(uname -r) .config                                                                                   
+    make LLVM=$LLVM_VERSION olddefconfig                                                                                  
+    echo "[+] Created .config from /boot/config-$(uname -r)"                                                              
+fi   
+
 # Backup current config
 cp .config .config.backup.$(date +%Y%m%d_%H%M%S)
 echo "[+] Backed up current .config"
