@@ -317,6 +317,7 @@ echo "[*] Using -O2 optimization (kernel default, best stability)..."
 # INITRAMFS DECOMPRESSION SUPPORT
 #######################################
 echo "[*] Enabling initramfs decompression..."
+./scripts/config --enable BLK_DEV_INITRD
 ./scripts/config --enable RD_GZIP
 ./scripts/config --enable RD_ZSTD
 
@@ -798,6 +799,113 @@ echo "[*] Disabling unused input devices..."
 ./scripts/config --disable GAMEPORT
 
 #######################################
+# DISABLE UNUSED HID DRIVERS (keep core + Dell essentials)
+#######################################
+echo "[*] Disabling unused HID vendor drivers..."
+# Keep: HID core, generic, multitouch, i2c-hid, usbhid
+# Keep: Alps, Elan, RMI (Synaptics) - common Dell touchpads
+
+# Gaming peripherals - not needed
+./scripts/config --disable HID_ACRUX
+./scripts/config --disable HID_BIGBEN
+./scripts/config --disable HID_BETOP
+./scripts/config --disable HID_COUGAR
+./scripts/config --disable HID_CORSAIR
+./scripts/config --disable HID_CREATIVE_SB0540
+./scripts/config --disable HID_DRAGONRISE
+./scripts/config --disable HID_GLORIOUS
+./scripts/config --disable HID_GOOGLE_STADIA
+./scripts/config --disable HID_GT683R
+./scripts/config --disable HID_HOLTEK
+./scripts/config --disable HID_LOGITECH
+./scripts/config --disable HID_LOGITECH_DJ
+./scripts/config --disable HID_LOGITECH_HIDPP
+./scripts/config --disable HID_NINTENDO
+./scripts/config --disable HID_PLAYSTATION
+./scripts/config --disable HID_RAZER
+./scripts/config --disable HID_REDRAGON
+./scripts/config --disable HID_ROCCAT
+./scripts/config --disable HID_SAITEK
+./scripts/config --disable HID_SONY
+./scripts/config --disable HID_SPEEDLINK
+./scripts/config --disable HID_STEAM
+./scripts/config --disable HID_STEELSERIES
+./scripts/config --disable HID_THRUSTMASTER
+./scripts/config --disable HID_WINWING
+./scripts/config --disable HID_ZEROPLUS
+
+# Other vendor HID - not Dell
+./scripts/config --disable HID_A4TECH
+./scripts/config --disable HID_APPLE
+./scripts/config --disable HID_APPLEIR
+./scripts/config --disable HID_APPLETB_BL
+./scripts/config --disable HID_APPLETB_KBD
+./scripts/config --disable HID_ASUS
+./scripts/config --disable HID_AUREAL
+./scripts/config --disable HID_BELKIN
+./scripts/config --disable HID_CMEDIA
+./scripts/config --disable HID_CYPRESS
+./scripts/config --disable HID_ELECOM
+./scripts/config --disable HID_ELO
+./scripts/config --disable HID_EVISION
+./scripts/config --disable HID_EZKEY
+./scripts/config --disable HID_GEMBIRD
+./scripts/config --disable HID_GFRM
+./scripts/config --disable HID_GOODIX_SPI
+./scripts/config --disable HID_GOOGLE_HAMMER
+./scripts/config --disable HID_GYRATION
+./scripts/config --disable HID_HYPERV
+./scripts/config --disable HID_ICADE
+./scripts/config --disable HID_ITE
+./scripts/config --disable HID_JABRA
+./scripts/config --disable HID_KENSINGTON
+./scripts/config --disable HID_KEYTOUCH
+./scripts/config --disable HID_KYE
+./scripts/config --disable HID_KYSONA
+./scripts/config --disable HID_LCPOWER
+./scripts/config --disable HID_LENOVO
+./scripts/config --disable HID_LETSKETCH
+./scripts/config --disable HID_MACALLY
+./scripts/config --disable HID_MAGICMOUSE
+./scripts/config --disable HID_MALTRON
+./scripts/config --disable HID_MCP2221
+./scripts/config --disable HID_MEGAWORLD
+./scripts/config --disable HID_MICROSOFT
+./scripts/config --disable HID_MONTEREY
+./scripts/config --disable HID_NTI
+./scripts/config --disable HID_NTRIG
+./scripts/config --disable HID_NVIDIA_SHIELD
+./scripts/config --disable HID_ORTEK
+./scripts/config --disable HID_PENMOUNT
+./scripts/config --disable HID_PETALYNX
+./scripts/config --disable HID_PICOLCD
+./scripts/config --disable HID_PLANTRONICS
+./scripts/config --disable HID_PRIMAX
+./scripts/config --disable HID_PRODIKEYS
+./scripts/config --disable HID_RETRODE
+./scripts/config --disable HID_SAMSUNG
+./scripts/config --disable HID_SEMITEK
+./scripts/config --disable HID_SIGMAMICRO
+./scripts/config --disable HID_SMARTJOYPLUS
+./scripts/config --disable HID_SUNPLUS
+./scripts/config --disable HID_TIVO
+./scripts/config --disable HID_TOPSEED
+./scripts/config --disable HID_TWINHAN
+./scripts/config --disable HID_U2FZERO
+./scripts/config --disable HID_UCLOGIC
+./scripts/config --disable HID_UDRAW_PS3
+./scripts/config --disable HID_VIEWSONIC
+./scripts/config --disable HID_VRC2
+./scripts/config --disable HID_WALTOP
+./scripts/config --disable HID_WIIMOTE
+./scripts/config --disable HID_XIAOMI
+./scripts/config --disable HID_XINMO
+./scripts/config --disable HID_ZYDACRON
+
+# Wacom tablets - not needed
+./scripts/config --disable HID_WACOM
+
+#######################################
 # DISABLE LEGACY PORTS
 #######################################
 echo "[*] Disabling legacy ports..."
@@ -885,9 +993,165 @@ echo "[*] Disabling ARM/embedded SoC drivers..."
 ./scripts/config --disable RASPBERRYPI_POWER
 
 # Embedded clocks/pinctrl (not needed on x86)
-./scripts/config --disable COMMON_CLK_SAMSUNG
 ./scripts/config --disable PINCTRL_SAMSUNG
 ./scripts/config --disable PINCTRL_EXYNOS
+
+#######################################
+# DISABLE EMBEDDED CLOCK DRIVERS
+#######################################
+echo "[*] Disabling embedded clock drivers..."
+# All embedded SoC clock drivers - not needed on x86
+./scripts/config --disable COMMON_CLK_SAMSUNG
+./scripts/config --disable COMMON_CLK_ACTIONS
+./scripts/config --disable COMMON_CLK_AMLOGIC
+./scripts/config --disable COMMON_CLK_ASPEED
+./scripts/config --disable COMMON_CLK_AT91
+./scripts/config --disable COMMON_CLK_AXI_CLKGEN
+./scripts/config --disable COMMON_CLK_BCM
+./scripts/config --disable COMMON_CLK_BERLIN
+./scripts/config --disable COMMON_CLK_CDCE706
+./scripts/config --disable COMMON_CLK_CDCE925
+./scripts/config --disable COMMON_CLK_CS2000_CP
+./scripts/config --disable COMMON_CLK_FSL_FLEXSPI
+./scripts/config --disable COMMON_CLK_FSL_SAI
+./scripts/config --disable COMMON_CLK_GEMINI
+./scripts/config --disable COMMON_CLK_HI3516CV300
+./scripts/config --disable COMMON_CLK_HI3519
+./scripts/config --disable COMMON_CLK_HI3559A
+./scripts/config --disable COMMON_CLK_HI3660
+./scripts/config --disable COMMON_CLK_HI3670
+./scripts/config --disable COMMON_CLK_HI3798CV200
+./scripts/config --disable COMMON_CLK_HI6220
+./scripts/config --disable COMMON_CLK_IPROC
+./scripts/config --disable COMMON_CLK_KEYSTONE
+./scripts/config --disable COMMON_CLK_LOCHNAGAR
+./scripts/config --disable COMMON_CLK_MEDIATEK
+./scripts/config --disable COMMON_CLK_MESON
+./scripts/config --disable COMMON_CLK_MICROCHIP
+./scripts/config --disable COMMON_CLK_MMP2
+./scripts/config --disable COMMON_CLK_MT6765
+./scripts/config --disable COMMON_CLK_MT6779
+./scripts/config --disable COMMON_CLK_MT6795
+./scripts/config --disable COMMON_CLK_MT7622
+./scripts/config --disable COMMON_CLK_MT7629
+./scripts/config --disable COMMON_CLK_MT7986
+./scripts/config --disable COMMON_CLK_MT8135
+./scripts/config --disable COMMON_CLK_MT8167
+./scripts/config --disable COMMON_CLK_MT8173
+./scripts/config --disable COMMON_CLK_MT8183
+./scripts/config --disable COMMON_CLK_MT8186
+./scripts/config --disable COMMON_CLK_MT8188
+./scripts/config --disable COMMON_CLK_MT8192
+./scripts/config --disable COMMON_CLK_MT8195
+./scripts/config --disable COMMON_CLK_NXP
+./scripts/config --disable COMMON_CLK_OXNAS
+./scripts/config --disable COMMON_CLK_PALMAS
+./scripts/config --disable COMMON_CLK_PWM
+./scripts/config --disable COMMON_CLK_PXA
+./scripts/config --disable COMMON_CLK_QCOM
+./scripts/config --disable COMMON_CLK_RK808
+./scripts/config --disable COMMON_CLK_ROCKCHIP
+./scripts/config --disable COMMON_CLK_S2MPS11
+./scripts/config --disable COMMON_CLK_SCMI
+./scripts/config --disable COMMON_CLK_SCPI
+./scripts/config --disable COMMON_CLK_SI5341
+./scripts/config --disable COMMON_CLK_SI5351
+./scripts/config --disable COMMON_CLK_SI514
+./scripts/config --disable COMMON_CLK_SI544
+./scripts/config --disable COMMON_CLK_SI570
+./scripts/config --disable COMMON_CLK_SOPHGO_CV1800
+./scripts/config --disable COMMON_CLK_STM32F
+./scripts/config --disable COMMON_CLK_STM32H7
+./scripts/config --disable COMMON_CLK_STM32MP
+./scripts/config --disable COMMON_CLK_SUNXI
+./scripts/config --disable COMMON_CLK_TEGRA
+./scripts/config --disable COMMON_CLK_TI_ADPLL
+./scripts/config --disable COMMON_CLK_VC5
+./scripts/config --disable COMMON_CLK_VISCONTI
+./scripts/config --disable COMMON_CLK_XGENE
+./scripts/config --disable COMMON_CLK_ZYNQMP
+
+# Clock driver vendor directories
+./scripts/config --disable CLK_ACTIONS
+./scripts/config --disable CLK_BAIKAL_T1
+./scripts/config --disable CLK_BCM2711_DVP
+./scripts/config --disable CLK_BCM2835
+./scripts/config --disable CLK_BCM_63XX
+./scripts/config --disable CLK_BCM_63XX_GATE
+./scripts/config --disable CLK_BCM_KONA
+./scripts/config --disable CLK_BCM_NS2
+./scripts/config --disable CLK_BCM_NSP
+./scripts/config --disable CLK_BCM_SR
+./scripts/config --disable CLK_BERLIN_BG4
+./scripts/config --disable CLK_DAVINCI_DA8XX
+./scripts/config --disable CLK_DAVINCI_DM355
+./scripts/config --disable CLK_DAVINCI_DM365
+./scripts/config --disable CLK_DAVINCI_DM644X
+./scripts/config --disable CLK_DAVINCI_DM646X
+./scripts/config --disable CLK_HSDK
+./scripts/config --disable CLK_IMX8MM
+./scripts/config --disable CLK_IMX8MN
+./scripts/config --disable CLK_IMX8MP
+./scripts/config --disable CLK_IMX8MQ
+./scripts/config --disable CLK_INGENIC
+./scripts/config --disable CLK_LS1028A
+./scripts/config --disable CLK_MILBEAUT
+./scripts/config --disable CLK_MSTAR
+./scripts/config --disable CLK_MXS
+./scripts/config --disable CLK_PISTACHIO
+./scripts/config --disable CLK_RENESAS
+./scripts/config --disable CLK_SIFIVE
+./scripts/config --disable CLK_SPRD
+./scripts/config --disable CLK_STARFIVE_JH7100
+./scripts/config --disable CLK_STARFIVE_JH7110
+./scripts/config --disable CLK_SUNXI_NG
+./scripts/config --disable CLK_THEAD
+./scripts/config --disable CLK_TI
+./scripts/config --disable CLK_UNIPHIER
+./scripts/config --disable CLK_ZYNQ
+
+#######################################
+# DISABLE EMBEDDED SOC DRIVERS
+#######################################
+echo "[*] Disabling embedded SoC drivers..."
+# All embedded SoC drivers - not needed on x86
+./scripts/config --disable SOC_AMLOGIC
+./scripts/config --disable SOC_AMLOGIC_MESON_GX_SOCINFO
+./scripts/config --disable SOC_AMLOGIC_MESON_MX_SOCINFO
+./scripts/config --disable SOC_APPLE
+./scripts/config --disable SOC_ASPEED
+./scripts/config --disable SOC_ATMEL
+./scripts/config --disable SOC_BCM
+./scripts/config --disable SOC_BRCMSTB
+./scripts/config --disable SOC_CANAAN
+./scripts/config --disable SOC_CIRRUS
+./scripts/config --disable SOC_DOVE
+./scripts/config --disable SOC_FSL
+./scripts/config --disable SOC_FUJITSU
+./scripts/config --disable SOC_GEMINI
+./scripts/config --disable SOC_HISILICON
+./scripts/config --disable SOC_IMX
+./scripts/config --disable SOC_IMX8M
+./scripts/config --disable SOC_IXP4XX
+./scripts/config --disable SOC_LANTIQ
+./scripts/config --disable SOC_LITEX
+./scripts/config --disable SOC_LOONGSON
+./scripts/config --disable SOC_MEDIATEK
+./scripts/config --disable SOC_MICROCHIP
+./scripts/config --disable SOC_NUVOTON
+./scripts/config --disable SOC_PXA
+./scripts/config --disable SOC_QCOM
+./scripts/config --disable SOC_RENESAS
+./scripts/config --disable SOC_ROCKCHIP
+./scripts/config --disable SOC_SAMSUNG
+./scripts/config --disable SOC_SOPHGO
+./scripts/config --disable SOC_SUNXI
+./scripts/config --disable SOC_TEGRA
+./scripts/config --disable SOC_TI
+./scripts/config --disable SOC_UX500
+./scripts/config --disable SOC_VERSATILE
+./scripts/config --disable SOC_VT8500
+./scripts/config --disable SOC_XILINX
 
 #######################################
 # DISABLE EMBEDDED/NON-X86 SUBSYSTEMS
