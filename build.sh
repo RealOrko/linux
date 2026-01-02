@@ -257,6 +257,11 @@ echo "=== Maximum Performance Kernel Build ==="
 echo "Using LLVM 19 toolchain with $JOBS parallel jobs"
 echo ""
 
+./scripts/config --disable HYPERV
+./scripts/config --disable ANDROID_BINDER_IPC
+./scripts/config --disable ANDROID_BINDERFS
+./scripts/config --disable IKHEADERS
+
 # Create .config from running kernel if it doesn't exist                                                                  
 if [ ! -f .config ]; then                                                                                                 
     echo "[*] No .config found, copying from running kernel..."                                                           
@@ -268,6 +273,13 @@ fi
 # Backup current config
 cp .config .config.backup.$(date +%Y%m%d_%H%M%S)
 echo "[+] Backed up current .config"
+
+#######################################
+# ENSURE MODULE SUPPORT IS ENABLED
+#######################################
+echo "[*] Ensuring module support is enabled..."
+./scripts/config --enable MODULES
+./scripts/config --enable MODULE_UNLOAD
 
 #######################################
 # CPU-SPECIFIC OPTIMIZATIONS
@@ -300,6 +312,13 @@ echo "[*] Enabling Clang ThinLTO..."
 echo "[*] Using -O2 optimization (kernel default, best stability)..."
 ./scripts/config --enable CC_OPTIMIZE_FOR_PERFORMANCE
 ./scripts/config --disable CC_OPTIMIZE_FOR_SIZE
+
+#######################################
+# INITRAMFS DECOMPRESSION SUPPORT
+#######################################
+echo "[*] Enabling initramfs decompression..."
+./scripts/config --enable RD_GZIP
+./scripts/config --enable RD_ZSTD
 
 #######################################
 # DISABLE ALL CPU VULNERABILITY MITIGATIONS
@@ -347,6 +366,68 @@ echo "[*] Disabling debug options..."
 ./scripts/config --disable KASAN
 ./scripts/config --disable UBSAN
 ./scripts/config --disable KCSAN
+./scripts/config --disable KFENCE
+./scripts/config --disable KMEMLEAK
+./scripts/config --disable KMSAN
+
+# Disable lock debugging
+./scripts/config --disable LOCKDEP
+./scripts/config --disable PROVE_LOCKING
+./scripts/config --disable DEBUG_LOCK_ALLOC
+./scripts/config --disable DEBUG_LOCKDEP
+./scripts/config --disable DEBUG_ATOMIC_SLEEP
+./scripts/config --disable DEBUG_MUTEXES
+./scripts/config --disable DEBUG_SPINLOCK
+./scripts/config --disable DEBUG_RWSEMS
+
+# Disable more kernel debugging
+./scripts/config --disable DEBUG_LIST
+./scripts/config --disable DEBUG_SG
+./scripts/config --disable DEBUG_NOTIFIERS
+./scripts/config --disable DEBUG_CREDENTIALS
+./scripts/config --disable DEBUG_OBJECTS
+./scripts/config --disable DEBUG_SLAB
+./scripts/config --disable SLUB_DEBUG
+./scripts/config --disable DEBUG_VM
+./scripts/config --disable DEBUG_VIRTUAL
+./scripts/config --disable DEBUG_MEMORY_INIT
+./scripts/config --disable DEBUG_PER_CPU_MAPS
+./scripts/config --disable DEBUG_SHIRQ
+./scripts/config --disable DEBUG_STACKOVERFLOW
+./scripts/config --disable DEBUG_TIMEKEEPING
+./scripts/config --disable DEBUG_KOBJECT
+./scripts/config --disable DEBUG_WQ_FORCE_RR_CPU
+./scripts/config --disable DEBUG_BLOCK_EXT_DEVT
+./scripts/config --disable DEBUG_FORCE_WEAK_PER_CPU
+./scripts/config --disable DEBUG_RSEQ
+./scripts/config --disable DEBUG_IRQFLAGS
+
+# Disable RCU debugging
+./scripts/config --disable RCU_TRACE
+./scripts/config --disable RCU_EQS_DEBUG
+./scripts/config --disable PROVE_RCU
+
+# Disable more tracing/profiling
+./scripts/config --disable FUNCTION_GRAPH_TRACER
+./scripts/config --disable SCHED_TRACER
+./scripts/config --disable HWLAT_TRACER
+./scripts/config --disable OSNOISE_TRACER
+./scripts/config --disable TIMERLAT_TRACER
+./scripts/config --disable IRQSOFF_TRACER
+./scripts/config --disable PREEMPTIRQ_TRACEPOINTS
+./scripts/config --disable BLK_DEV_IO_TRACE
+./scripts/config --disable UPROBE_EVENTS
+./scripts/config --disable BPF_KPROBE_OVERRIDE
+./scripts/config --disable SYNTH_EVENTS
+./scripts/config --disable HIST_TRIGGERS
+./scripts/config --disable TRACE_EVENT_INJECT
+
+# Disable frame pointers (slight performance overhead)
+./scripts/config --disable FRAME_POINTER
+
+# Disable dynamic debug
+./scripts/config --disable DYNAMIC_DEBUG
+./scripts/config --disable DYNAMIC_DEBUG_CORE
 
 # Disable core dump support (not needed for production, saves memory)
 ./scripts/config --disable COREDUMP
@@ -361,6 +442,9 @@ echo "[*] Disabling debug options..."
 
 # Disable kernel symbol table (debugging aid, adds kernel size)
 ./scripts/config --disable KALLSYMS
+
+# Disable in-kernel headers (used by BPF CO-RE, not needed)
+./scripts/config --disable IKHEADERS
 
 # Disable boot-time memory testing (slows boot, only for diagnostics)
 ./scripts/config --disable MEMTEST
@@ -487,6 +571,10 @@ echo "[*] Disabling module signing..."
 ./scripts/config --disable MODVERSIONS
 ./scripts/config --disable MODULE_SRCVERSION_ALL
 
+# Clear Ubuntu/Canonical certificate paths (don't exist in upstream kernel)
+./scripts/config --set-str SYSTEM_TRUSTED_KEYS ""
+./scripts/config --set-str SYSTEM_REVOCATION_KEYS ""
+
 #######################################
 # DISABLE POWER MANAGEMENT DEBUG
 #######################################
@@ -526,6 +614,29 @@ echo "[*] Disabling i915 error capture..."
 # DISPLAYLINK / USB DISPLAY CONFIGURATION
 #######################################
 echo "[*] Configuring DisplayLink support..."
+
+# EVDI needs I2C for DDC/EDID communication
+./scripts/config --enable I2C
+./scripts/config --enable I2C_ALGOBIT
+
+# EVDI needs USB core for hotplug notifications
+./scripts/config --enable USB
+./scripts/config --enable USB_SUPPORT
+
+# EVDI needs DRM with atomic modesetting helpers
+./scripts/config --enable DRM
+./scripts/config --enable DRM_KMS_HELPER
+./scripts/config --enable DRM_GEM_SHMEM_HELPER
+./scripts/config --enable DRM_FBDEV_EMULATION
+
+# DRM dependencies
+./scripts/config --enable FB
+./scripts/config --enable FB_CORE
+./scripts/config --enable FB_SYSMEM_HELPERS
+./scripts/config --enable FB_SYSMEM_HELPERS_DEFERRED
+./scripts/config --enable FRAMEBUFFER_CONSOLE
+./scripts/config --enable DMA_SHARED_BUFFER
+./scripts/config --enable SYNC_FILE
 
 # DRM_EVDI - DO NOT DISABLE - Built out-of-tree from github.com/DisplayLink/evdi
 # The in-kernel DRM_EVDI option is for the staging driver, but we build the
@@ -704,9 +815,473 @@ echo "[*] Disabling unused media drivers..."
 ./scripts/config --disable MEDIA_RADIO_SUPPORT
 ./scripts/config --disable MEDIA_SDR_SUPPORT
 ./scripts/config --disable MEDIA_TEST_SUPPORT
+./scripts/config --disable MEDIA_PLATFORM_SUPPORT
 
 #######################################
-# DISABLE SPECIALIZED HARDWARE
+# DISABLE ARM/EMBEDDED SOC DRIVERS (x86 laptop only)
+#######################################
+echo "[*] Disabling ARM/embedded SoC drivers..."
+# ARM SoC vendors - not needed on x86
+./scripts/config --disable ARCH_SUNXI
+./scripts/config --disable ARCH_ALPINE
+./scripts/config --disable ARCH_APPLE
+./scripts/config --disable ARCH_BCM
+./scripts/config --disable ARCH_BERLIN
+./scripts/config --disable ARCH_EXYNOS
+./scripts/config --disable ARCH_K3
+./scripts/config --disable ARCH_LG1K
+./scripts/config --disable ARCH_HISI
+./scripts/config --disable ARCH_MEDIATEK
+./scripts/config --disable ARCH_MESON
+./scripts/config --disable ARCH_MVEBU
+./scripts/config --disable ARCH_NXP
+./scripts/config --disable ARCH_QCOM
+./scripts/config --disable ARCH_ROCKCHIP
+./scripts/config --disable ARCH_RENESAS
+./scripts/config --disable ARCH_S32
+./scripts/config --disable ARCH_INTEL_SOCFPGA
+./scripts/config --disable ARCH_STM32
+./scripts/config --disable ARCH_TEGRA
+./scripts/config --disable ARCH_SPRD
+./scripts/config --disable ARCH_THUNDER
+./scripts/config --disable ARCH_UNIPHIER
+./scripts/config --disable ARCH_VEXPRESS
+./scripts/config --disable ARCH_ZYNQMP
+
+# SoC-specific platform drivers
+./scripts/config --disable SOC_SAMSUNG
+./scripts/config --disable SOC_TI
+
+# Media platform drivers for embedded SoCs
+./scripts/config --disable VIDEO_SAMSUNG_S5P_G2D
+./scripts/config --disable VIDEO_SAMSUNG_S5P_JPEG
+./scripts/config --disable VIDEO_SAMSUNG_S5P_MFC
+./scripts/config --disable VIDEO_SAMSUNG_EXYNOS_GSC
+./scripts/config --disable V4L_PLATFORM_DRIVERS
+./scripts/config --disable V4L_MEM2MEM_DRIVERS
+
+# Embedded/SoC DRM drivers
+./scripts/config --disable DRM_EXYNOS
+./scripts/config --disable DRM_ROCKCHIP
+./scripts/config --disable DRM_TEGRA
+./scripts/config --disable DRM_STM
+./scripts/config --disable DRM_MESON
+./scripts/config --disable DRM_MEDIATEK
+./scripts/config --disable DRM_LIMA
+./scripts/config --disable DRM_PANFROST
+./scripts/config --disable DRM_ETNAVIV
+./scripts/config --disable DRM_HISI_HIBMC
+./scripts/config --disable DRM_HISI_KIRIN
+
+# Embedded USB/PHY drivers
+./scripts/config --disable PHY_SAMSUNG_USB2
+./scripts/config --disable PHY_EXYNOS_DP_VIDEO
+./scripts/config --disable PHY_EXYNOS_MIPI_VIDEO
+
+# ARM-specific kernel features
+./scripts/config --disable ARM_SCMI_PROTOCOL
+./scripts/config --disable ARM_SCPI_PROTOCOL
+./scripts/config --disable RASPBERRYPI_FIRMWARE
+./scripts/config --disable RASPBERRYPI_POWER
+
+# Embedded clocks/pinctrl (not needed on x86)
+./scripts/config --disable COMMON_CLK_SAMSUNG
+./scripts/config --disable PINCTRL_SAMSUNG
+./scripts/config --disable PINCTRL_EXYNOS
+
+#######################################
+# DISABLE EMBEDDED/NON-X86 SUBSYSTEMS
+#######################################
+echo "[*] Disabling embedded/non-x86 subsystems..."
+
+# MTD - Flash memory devices (embedded systems)
+./scripts/config --disable MTD
+
+# Memory controllers (embedded)
+./scripts/config --disable MEMORY
+
+# Regulator framework - keep enabled, some Intel drivers need it
+# ./scripts/config --disable REGULATOR
+
+# Reset controllers (embedded)
+./scripts/config --disable RESET_CONTROLLER
+
+# Mailbox (inter-processor communication, embedded)
+./scripts/config --disable MAILBOX
+
+# IOMMU - keep Intel, disable others
+./scripts/config --disable AMD_IOMMU
+./scripts/config --disable IRQ_REMAP
+
+# Remote processors (embedded)
+./scripts/config --disable REMOTEPROC
+./scripts/config --disable RPMSG
+
+# SoC bus drivers
+./scripts/config --disable SOC_BUS
+
+# TEE (TrustZone, ARM)
+./scripts/config --disable TEE
+
+# Generic PHY framework (mostly embedded)
+./scripts/config --disable GENERIC_PHY
+
+# Power supply - keep enabled for laptop battery
+# ./scripts/config --disable POWER_SUPPLY
+
+# Pulse Width Modulation (embedded)
+./scripts/config --disable PWM
+
+# NVMEM (embedded non-volatile memory)
+./scripts/config --disable NVMEM
+
+# FSI (IBM Power specific)
+./scripts/config --disable FSI
+
+# MUX subsystem (embedded)
+./scripts/config --disable MULTIPLEXER
+
+# Interconnect (ARM SoC)
+./scripts/config --disable INTERCONNECT
+
+# Counter subsystem (embedded)
+./scripts/config --disable COUNTER
+
+# HTE (Hardware Timestamping Engine, embedded)
+./scripts/config --disable HTE
+
+#######################################
+# DISABLE USB GADGET (device mode)
+#######################################
+echo "[*] Disabling USB gadget/device mode..."
+./scripts/config --disable USB_GADGET
+./scripts/config --disable USB_CONFIGFS
+./scripts/config --disable USB_MUSB_HDRC
+./scripts/config --disable USB_DWC3
+./scripts/config --disable USB_DWC2
+./scripts/config --disable USB_CHIPIDEA
+
+#######################################
+# DISABLE SOUND DRIVERS (keep Intel HDA only)
+#######################################
+echo "[*] Disabling non-Intel sound drivers..."
+./scripts/config --disable SND_SOC
+./scripts/config --disable SND_USB_AUDIO
+./scripts/config --disable SND_FIREWIRE
+./scripts/config --disable SND_PCMCIA
+./scripts/config --disable SND_SPARC
+./scripts/config --disable SND_SPI
+./scripts/config --disable SND_MIPS
+./scripts/config --disable SND_XEN_FRONTEND
+./scripts/config --disable SND_VIRTIO
+
+#######################################
+# DISABLE MMC/SD HOST CONTROLLERS (except laptop slots)
+#######################################
+echo "[*] Disabling embedded MMC/SD controllers..."
+./scripts/config --disable MMC_SDHCI_PLTFM
+./scripts/config --disable MMC_SDHCI_OF_ARASAN
+./scripts/config --disable MMC_SDHCI_OF_AT91
+./scripts/config --disable MMC_SDHCI_CADENCE
+./scripts/config --disable MMC_SDHCI_F_SDH30
+./scripts/config --disable MMC_DW
+./scripts/config --disable MMC_SPI
+./scripts/config --disable MMC_SUNXI
+
+#######################################
+# DISABLE GPIO/PINCTRL (keep Intel only)
+#######################################
+echo "[*] Disabling non-Intel GPIO/pinctrl..."
+./scripts/config --disable GPIO_DWAPB
+./scripts/config --disable GPIO_MB86S7X
+./scripts/config --disable GPIO_PL061
+./scripts/config --disable GPIO_XGENE
+./scripts/config --disable GPIO_XILINX
+./scripts/config --disable PINCTRL_AMD
+./scripts/config --disable PINCTRL_SINGLE
+
+#######################################
+# DISABLE I2C BUS DRIVERS (keep Intel only)
+#######################################
+echo "[*] Disabling non-Intel I2C controllers..."
+./scripts/config --disable I2C_CADENCE
+./scripts/config --disable I2C_DESIGNWARE_PLATFORM
+./scripts/config --disable I2C_EMEV2
+./scripts/config --disable I2C_GPIO
+./scripts/config --disable I2C_IMX
+./scripts/config --disable I2C_MV64XXX
+./scripts/config --disable I2C_OCORES
+./scripts/config --disable I2C_PCA_PLATFORM
+./scripts/config --disable I2C_RK3X
+./scripts/config --disable I2C_SIMTEC
+./scripts/config --disable I2C_XILINX
+
+#######################################
+# DISABLE SPI CONTROLLERS (keep PCI only)
+#######################################
+echo "[*] Disabling embedded SPI controllers..."
+./scripts/config --disable SPI_CADENCE
+./scripts/config --disable SPI_DESIGNWARE
+./scripts/config --disable SPI_DW_MMIO
+./scripts/config --disable SPI_GPIO
+./scripts/config --disable SPI_FSL_SPI
+./scripts/config --disable SPI_OC_TINY
+./scripts/config --disable SPI_ORION
+./scripts/config --disable SPI_PL022
+./scripts/config --disable SPI_ROCKCHIP
+./scripts/config --disable SPI_XILINX
+
+#######################################
+# DISABLE RTC DRIVERS (keep PC RTC only)
+#######################################
+echo "[*] Disabling embedded RTC drivers..."
+./scripts/config --disable RTC_DRV_ABB5ZES3
+./scripts/config --disable RTC_DRV_ABEOZ9
+./scripts/config --disable RTC_DRV_DS1307
+./scripts/config --disable RTC_DRV_DS1374
+./scripts/config --disable RTC_DRV_DS1672
+./scripts/config --disable RTC_DRV_DS3232
+./scripts/config --disable RTC_DRV_HYM8563
+./scripts/config --disable RTC_DRV_ISL1208
+./scripts/config --disable RTC_DRV_M41T80
+./scripts/config --disable RTC_DRV_MAX6900
+./scripts/config --disable RTC_DRV_MAX77686
+./scripts/config --disable RTC_DRV_MCP795
+./scripts/config --disable RTC_DRV_PALMAS
+./scripts/config --disable RTC_DRV_PCF2123
+./scripts/config --disable RTC_DRV_PCF2127
+./scripts/config --disable RTC_DRV_PCF85063
+./scripts/config --disable RTC_DRV_PCF8523
+./scripts/config --disable RTC_DRV_PCF85363
+./scripts/config --disable RTC_DRV_PCF8563
+./scripts/config --disable RTC_DRV_RV3028
+./scripts/config --disable RTC_DRV_RV3032
+./scripts/config --disable RTC_DRV_RV8803
+./scripts/config --disable RTC_DRV_RX8581
+./scripts/config --disable RTC_DRV_S35390A
+./scripts/config --disable RTC_DRV_SD3078
+./scripts/config --disable RTC_DRV_BQ32K
+./scripts/config --disable RTC_DRV_FM3130
+./scripts/config --disable RTC_DRV_RX8025
+
+#######################################
+# DISABLE DMA ENGINES (keep Intel only)
+#######################################
+echo "[*] Disabling non-Intel DMA engines..."
+./scripts/config --disable AMBA_PL08X
+./scripts/config --disable DW_DMAC
+./scripts/config --disable DW_DMAC_CORE
+./scripts/config --disable FSL_DMA
+./scripts/config --disable FSL_EDMA
+./scripts/config --disable MV_XOR
+./scripts/config --disable MV_XOR_V2
+./scripts/config --disable PL330_DMA
+./scripts/config --disable XILINX_DMA
+./scripts/config --disable QCOM_BAM_DMA
+./scripts/config --disable DMA_BCM2835
+
+#######################################
+# DISABLE NON-INTEL THERMAL DRIVERS
+#######################################
+echo "[*] Disabling non-Intel thermal drivers..."
+./scripts/config --disable ARMADA_THERMAL
+./scripts/config --disable HISI_THERMAL
+./scripts/config --disable IMX_THERMAL
+./scripts/config --disable MTK_THERMAL
+./scripts/config --disable QCOM_TSENS
+./scripts/config --disable RCAR_THERMAL
+./scripts/config --disable RCAR_GEN3_THERMAL
+./scripts/config --disable ROCKCHIP_THERMAL
+./scripts/config --disable TEGRA_SOCTHERM
+./scripts/config --disable GENERIC_ADC_THERMAL
+
+#######################################
+# DISABLE CRYPTO HW ACCELERATORS (keep Intel)
+#######################################
+echo "[*] Disabling non-Intel crypto accelerators..."
+./scripts/config --disable CRYPTO_DEV_ATMEL_AES
+./scripts/config --disable CRYPTO_DEV_ATMEL_SHA
+./scripts/config --disable CRYPTO_DEV_ATMEL_TDES
+./scripts/config --disable CRYPTO_DEV_FSL_CAAM
+./scripts/config --disable CRYPTO_DEV_QCE
+./scripts/config --disable CRYPTO_DEV_QCOM_RNG
+./scripts/config --disable CRYPTO_DEV_ROCKCHIP
+./scripts/config --disable CRYPTO_DEV_S5P
+./scripts/config --disable CRYPTO_DEV_EXYNOS_RNG
+./scripts/config --disable CRYPTO_DEV_CCREE
+./scripts/config --disable CRYPTO_DEV_HISI_SEC
+./scripts/config --disable CRYPTO_DEV_HISI_ZIP
+./scripts/config --disable CRYPTO_DEV_AMLOGIC_GXL
+./scripts/config --disable CRYPTO_DEV_SA2UL
+./scripts/config --disable CRYPTO_DEV_STM32_CRC
+./scripts/config --disable CRYPTO_DEV_STM32_HASH
+./scripts/config --disable CRYPTO_DEV_STM32_CRYP
+./scripts/config --disable CRYPTO_DEV_VIRTIO
+
+#######################################
+# DISABLE WATCHDOG (keep Intel/iTCO)
+#######################################
+echo "[*] Disabling non-Intel watchdogs..."
+./scripts/config --disable WATCHDOG
+./scripts/config --disable SOFT_WATCHDOG
+
+#######################################
+# DISABLE HWMON SENSORS (keep Intel only)
+#######################################
+echo "[*] Disabling non-Intel hardware monitoring..."
+./scripts/config --disable SENSORS_AD7418
+./scripts/config --disable SENSORS_ADM1021
+./scripts/config --disable SENSORS_ADM1025
+./scripts/config --disable SENSORS_ADM1026
+./scripts/config --disable SENSORS_ADM1029
+./scripts/config --disable SENSORS_ADM1031
+./scripts/config --disable SENSORS_ADM9240
+./scripts/config --disable SENSORS_ASC7621
+./scripts/config --disable SENSORS_ASPEED
+./scripts/config --disable SENSORS_DS1621
+./scripts/config --disable SENSORS_F71805F
+./scripts/config --disable SENSORS_GL518SM
+./scripts/config --disable SENSORS_GL520SM
+./scripts/config --disable SENSORS_G760A
+./scripts/config --disable SENSORS_GPIO_FAN
+./scripts/config --disable SENSORS_HIH6130
+./scripts/config --disable SENSORS_INA209
+./scripts/config --disable SENSORS_INA2XX
+./scripts/config --disable SENSORS_INA3221
+./scripts/config --disable SENSORS_IT87
+./scripts/config --disable SENSORS_JC42
+./scripts/config --disable SENSORS_LM63
+./scripts/config --disable SENSORS_LM75
+./scripts/config --disable SENSORS_LM77
+./scripts/config --disable SENSORS_LM78
+./scripts/config --disable SENSORS_LM80
+./scripts/config --disable SENSORS_LM83
+./scripts/config --disable SENSORS_LM85
+./scripts/config --disable SENSORS_LM87
+./scripts/config --disable SENSORS_LM90
+./scripts/config --disable SENSORS_LM92
+./scripts/config --disable SENSORS_LM93
+./scripts/config --disable SENSORS_LM95234
+./scripts/config --disable SENSORS_LM95245
+./scripts/config --disable SENSORS_MAX1111
+./scripts/config --disable SENSORS_MAX16065
+./scripts/config --disable SENSORS_MAX1619
+./scripts/config --disable SENSORS_MAX1668
+./scripts/config --disable SENSORS_MAX197
+./scripts/config --disable SENSORS_MAX31722
+./scripts/config --disable SENSORS_MAX6621
+./scripts/config --disable SENSORS_MAX6639
+./scripts/config --disable SENSORS_MAX6642
+./scripts/config --disable SENSORS_MAX6650
+./scripts/config --disable SENSORS_MAX6697
+./scripts/config --disable SENSORS_MCP3021
+./scripts/config --disable SENSORS_NCT6683
+./scripts/config --disable SENSORS_NCT7802
+./scripts/config --disable SENSORS_NCT7904
+./scripts/config --disable SENSORS_NTC_THERMISTOR
+./scripts/config --disable SENSORS_PC87360
+./scripts/config --disable SENSORS_PC87427
+./scripts/config --disable SENSORS_PCF8591
+./scripts/config --disable SENSORS_PWM_FAN
+./scripts/config --disable SENSORS_SHT15
+./scripts/config --disable SENSORS_SHT21
+./scripts/config --disable SENSORS_SIS5595
+./scripts/config --disable SENSORS_SMSC47B397
+./scripts/config --disable SENSORS_SMSC47M1
+./scripts/config --disable SENSORS_SMSC47M192
+./scripts/config --disable SENSORS_STTS751
+./scripts/config --disable SENSORS_TMP102
+./scripts/config --disable SENSORS_TMP103
+./scripts/config --disable SENSORS_TMP108
+./scripts/config --disable SENSORS_TMP401
+./scripts/config --disable SENSORS_TMP421
+./scripts/config --disable SENSORS_VIA686A
+./scripts/config --disable SENSORS_VT1211
+./scripts/config --disable SENSORS_VT8231
+./scripts/config --disable SENSORS_W83627EHF
+./scripts/config --disable SENSORS_W83627HF
+./scripts/config --disable SENSORS_W83773G
+./scripts/config --disable SENSORS_W83781D
+./scripts/config --disable SENSORS_W83791D
+./scripts/config --disable SENSORS_W83792D
+./scripts/config --disable SENSORS_W83793
+./scripts/config --disable SENSORS_W83795
+./scripts/config --disable SENSORS_W83L785TS
+./scripts/config --disable SENSORS_W83L786NG
+
+#######################################
+# DISABLE MFD (Multi-Function Device)
+#######################################
+echo "[*] Disabling embedded MFD drivers..."
+./scripts/config --disable MFD_ACT8945A
+./scripts/config --disable MFD_AS3711
+./scripts/config --disable MFD_AS3722
+./scripts/config --disable MFD_ATMEL_FLEXCOM
+./scripts/config --disable MFD_ATMEL_HLCDC
+./scripts/config --disable MFD_AXP20X
+./scripts/config --disable MFD_BD9571MWV
+./scripts/config --disable MFD_CROS_EC
+./scripts/config --disable MFD_DA9052_I2C
+./scripts/config --disable MFD_DA9055
+./scripts/config --disable MFD_DA9062
+./scripts/config --disable MFD_DA9063
+./scripts/config --disable MFD_DA9150
+./scripts/config --disable MFD_DLN2
+./scripts/config --disable MFD_HI6421_PMIC
+./scripts/config --disable MFD_HI6421_SPMI
+./scripts/config --disable MFD_HI655X_PMIC
+./scripts/config --disable MFD_LP3943
+./scripts/config --disable MFD_LP873X
+./scripts/config --disable MFD_LP87565
+./scripts/config --disable MFD_MAX14577
+./scripts/config --disable MFD_MAX77620
+./scripts/config --disable MFD_MAX77650
+./scripts/config --disable MFD_MAX77686
+./scripts/config --disable MFD_MAX77693
+./scripts/config --disable MFD_MAX77843
+./scripts/config --disable MFD_MAX8907
+./scripts/config --disable MFD_MAX8925
+./scripts/config --disable MFD_MAX8997
+./scripts/config --disable MFD_MAX8998
+./scripts/config --disable MFD_MT6360
+./scripts/config --disable MFD_MT6397
+./scripts/config --disable MFD_PALMAS
+./scripts/config --disable MFD_RETU
+./scripts/config --disable MFD_RK808
+./scripts/config --disable MFD_RN5T618
+./scripts/config --disable MFD_RT5033
+./scripts/config --disable MFD_SEC_CORE
+./scripts/config --disable MFD_STMPE
+# MFD_SYSCON - keep enabled, sometimes needed on x86
+# ./scripts/config --disable MFD_SYSCON
+./scripts/config --disable MFD_TC3589X
+./scripts/config --disable MFD_TI_AM335X_TSCADC
+./scripts/config --disable MFD_TI_LP87565
+./scripts/config --disable MFD_TI_LMU
+./scripts/config --disable MFD_TPS65090
+./scripts/config --disable MFD_TPS65217
+./scripts/config --disable MFD_TI_LP873X
+./scripts/config --disable MFD_TPS65218
+./scripts/config --disable MFD_TPS6586X
+./scripts/config --disable MFD_TPS65910
+./scripts/config --disable MFD_TPS65912_I2C
+./scripts/config --disable MFD_TPS65912_SPI
+./scripts/config --disable MFD_TPS80031
+./scripts/config --disable MFD_TWLCORE
+./scripts/config --disable MFD_WM8994
+./scripts/config --disable MFD_WCD934X
+./scripts/config --disable MFD_ATC260X
+
+#######################################
+# DISABLE LED DRIVERS
+#######################################
+echo "[*] Disabling embedded LED drivers..."
+./scripts/config --disable NEW_LEDS
+./scripts/config --disable LEDS_CLASS
+./scripts/config --disable LEDS_TRIGGERS
+
+#######################################
+# SPECIALIZED HARDWARE
 #######################################
 echo "[*] Disabling specialized hardware subsystems..."
 ./scripts/config --disable FPGA
@@ -754,6 +1329,8 @@ echo "[*] Disabling unused SCSI controllers..."
 # DISABLE UNUSED FILESYSTEMS
 #######################################
 echo "[*] Disabling unused filesystems..."
+./scripts/config --disable XFS_FS
+./scripts/config --disable BTRFS_FS
 ./scripts/config --disable ECRYPT_FS
 ./scripts/config --disable CIFS
 ./scripts/config --disable CIFS_DEBUG
@@ -924,6 +1501,15 @@ echo "[*] Disabling process accounting..."
 ./scripts/config --disable ACPI_DEBUG
 # DMI sysfs - rarely used, exposes hardware info via sysfs
 ./scripts/config --disable DMI_SYSFS
+
+#######################################
+# DISABLE UNUSED CRYPTO MODULES
+#######################################
+echo "[*] Disabling unused crypto modules..."
+./scripts/config --disable CRYPTO_ECRDSA
+./scripts/config --disable CRYPTO_ECDSA
+./scripts/config --disable CRYPTO_SM2
+./scripts/config --disable CRYPTO_CURVE25519
 
 #######################################
 # PERFORMANCE OPTIMIZATIONS
