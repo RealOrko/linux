@@ -618,6 +618,19 @@ echo "[*] Disabling i915 error capture..."
 ./scripts/config --disable DRM_I915_COMPRESS_ERROR
 
 #######################################
+# EFI BOOT SUPPORT (required for UEFI systems)
+#######################################
+echo "[*] Enabling EFI boot support..."
+./scripts/config --enable EFI
+./scripts/config --enable EFI_STUB
+
+#######################################
+# INTEL GPU (i915 for HD Graphics 620)
+#######################################
+echo "[*] Enabling Intel i915 GPU driver..."
+./scripts/config --enable DRM_I915
+
+#######################################
 # DISPLAYLINK / USB DISPLAY CONFIGURATION
 #######################################
 echo "[*] Configuring DisplayLink support..."
