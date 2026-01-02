@@ -1,254 +1,15 @@
 #!/bin/bash
-#
-# ============================================================================
-# MAXIMUM PERFORMANCE KERNEL BUILD SCRIPT
-# ============================================================================
-# Target: Dell Laptop with Intel Kaby Lake i7-7500U
-# Kernel: Linux 6.18
-# Toolchain: LLVM/Clang 19 with ThinLTO
-#
-# PURPOSE:
-# Build an aggressively optimized kernel for maximum performance on a specific
-# Dell laptop where ONLY DisplayLink (USB graphics) and Docker need to work.
-# This script disables 322+ kernel config options for performance gains.
-#
-# ============================================================================
-# OPTIMIZATION CATEGORIES (322+ configs disabled)
-# ============================================================================
-#
-# 1. CPU VULNERABILITY MITIGATIONS (18 disabled)
-#    - Spectre V1/V2, Meltdown (PTI), MDS, TAA, L1TF, SRBDS, SSB
-#    - Retpoline, IBPB/IBRS, SLS, GDS, RFDS, BHI, MMIO stale data
-#    - Est. gain: 5-30% depending on workload (syscall-heavy benefits most)
-#
-# 2. DEBUG & TRACING (14 disabled)
-#    - DEBUG_KERNEL, DEBUG_INFO, FTRACE, KPROBES, PROFILING
-#    - Stack tracer, function tracer, kernel sanitizers (KASAN/UBSAN/KCSAN)
-#    - Est. gain: Smaller kernel, faster boot, reduced memory overhead
-#
-# 3. SECURITY HARDENING (19 disabled)
-#    - Stack protector, FORTIFY_SOURCE, INIT_ON_ALLOC/FREE
-#    - CFI, SHADOW_CALL_STACK, RANDSTRUCT, STACKLEAK
-#    - Module signing, Lockdown LSM, Yama LSM
-#    - Est. gain: 1-5% (security checks removed from hot paths)
-#
-# 4. VIRTUALIZATION GUEST (14 disabled)
-#    - KVM guest, Xen, Hyper-V, VMware - not needed on bare metal
-#    - Paravirt, PVPANIC, virtio guest drivers
-#    - Est. gain: Smaller kernel, no virt overhead checks
-#
-# 5. UNUSED NETWORK DRIVERS (102 disabled)
-#    - Ethernet: 70 vendors (Intel i210/i225 kept for compatibility)
-#    - WiFi: 17 vendors (only Atheros ath10k needed)
-#    - Obsolete: ATM, FDDI, Token Ring, WAN, HIPPI, X.25
-#    - Est. gain: Much faster boot, smaller initramfs
-#
-# 6. UNUSED GPU DRIVERS (14 disabled)
-#    - All discrete GPU vendors (AMD, NVIDIA nouveau, etc.)
-#    - Only Intel i915 kept (HD Graphics 620)
-#    - Legacy USB DisplayLink (replaced by EVDI out-of-tree)
-#    - Est. gain: Faster GPU init, smaller kernel
-#
-# 7. UNUSED STORAGE DRIVERS (19 disabled)
-#    - RAID controllers: Adaptec, LSI, Promise, etc.
-#    - SAS HBAs: mpt3sas, qla2xxx, lpfc
-#    - Fibre Channel, iSCSI initiators
-#    - Est. gain: Faster SCSI subsystem init
-#
-# 8. UNUSED FILESYSTEMS (18 disabled)
-#    - Network: NFS, CIFS/SMB, 9P, CEPH, ORANGEFS
-#    - Exotic: BTRFS, XFS, ReiserFS, JFS, NILFS2, F2FS
-#    - Only EXT4 and OverlayFS kept (Docker requirement)
-#    - Est. gain: Smaller kernel, faster VFS init
-#
-# 9. UNUSED INPUT/MEDIA (13 disabled)
-#    - Joystick, Tablet, Touchscreen (only keyboard/mouse/touchpad)
-#    - DVB/TV tuners, IR receivers, Analog V4L
-#    - Est. gain: Faster input subsystem init
-#
-# 10. MISC DISABLED SUBSYSTEMS (30+ disabled)
-#    - Memory hotplug, EDAC/ECC, hibernation, disk quotas
-#    - PCI hotplug, staging drivers, MPLS, SoundWire
-#    - Boot logo, PC speaker, legacy syscalls
-#    - Process accounting (TASKSTATS, BSD_PROCESS_ACCT)
-#    - Kernel profiling (KALLSYMS, RELAY, MEMTEST)
-#    - Est. gain: Leaner kernel, faster boot
-#
-# 11. LTO & COMPILER OPTIMIZATIONS (enabled)
-#    - ThinLTO with Clang 19 (parallel, fast linking)
-#    - -O2 optimization (kernel default, stable)
-#    - Native CPU tuning (X86_NATIVE_CPU for Kaby Lake)
-#    - Est. gain: 5-10% (whole-program optimization)
-#
-# ============================================================================
-# SECURITY TRADE-OFFS - READ CAREFULLY
-# ============================================================================
-#
-# This kernel DISABLES most security features for performance:
-#
-# HIGH RISK (use only on trusted networks):
-#   - CPU mitigations OFF: Vulnerable to Spectre, Meltdown, MDS, etc.
-#   - KASLR OFF: Kernel address randomization disabled
-#   - Stack protector OFF: No stack buffer overflow detection
-#   - FORTIFY_SOURCE OFF: No buffer overflow checking in libc wrappers
-#   - Module signing OFF: Unsigned kernel modules can be loaded
-#
-# MEDIUM RISK:
-#   - Audit subsystem OFF: No security event logging
-#   - Lockdown LSM OFF: No kernel integrity protection
-#   - Memory hardening OFF: Freed memory not zeroed
-#
-# KEPT FOR DOCKER COMPATIBILITY:
-#   - SECCOMP enabled (required for container syscall filtering)
-#   - SECCOMP_FILTER enabled (BPF-based syscall filters)
-#   - See Docker requirements section below
-#
-# RECOMMENDATION:
-#   - Use on trusted local networks only
-#   - Keep firewall enabled (iptables/nftables for Docker anyway)
-#   - Do not expose to untrusted Internet traffic
-#   - Do not run untrusted code or containers
-#
-# ============================================================================
-# DOCKER REQUIREMENTS (all enabled/kept)
-# ============================================================================
-#
-# Docker is fully supported. These configs are ENABLED (not disabled):
-#
-# NAMESPACES (container isolation):
-#   CONFIG_NAMESPACES, CONFIG_UTS_NS, CONFIG_IPC_NS, CONFIG_PID_NS,
-#   CONFIG_USER_NS, CONFIG_NET_NS
-#
-# CGROUPS (resource limits):
-#   CONFIG_CGROUPS, CONFIG_CGROUP_CPUACCT, CONFIG_CGROUP_DEVICE,
-#   CONFIG_CGROUP_FREEZER, CONFIG_CGROUP_SCHED, CONFIG_MEMCG,
-#   CONFIG_BLK_CGROUP, CONFIG_CGROUP_PIDS, CONFIG_CGROUP_PERF
-#
-# STORAGE (overlay driver):
-#   CONFIG_OVERLAY_FS
-#
-# NETWORKING (bridge/NAT):
-#   CONFIG_NETFILTER, CONFIG_NETFILTER_XTABLES, CONFIG_NF_CONNTRACK,
-#   CONFIG_NF_NAT, CONFIG_IP_NF_IPTABLES, CONFIG_IP_NF_NAT,
-#   CONFIG_BRIDGE, CONFIG_BRIDGE_NETFILTER, CONFIG_VETH
-#
-# SECURITY (container sandboxing):
-#   CONFIG_SECCOMP, CONFIG_SECCOMP_FILTER
-#   (Required for Docker's default seccomp profiles)
-#
-# MISC:
-#   CONFIG_POSIX_MQUEUE, CONFIG_KEYS, CONFIG_CRYPTO
-#
-# ============================================================================
-# DISPLAYLINK / EVDI BUILD PROCESS
-# ============================================================================
-#
-# DisplayLink USB graphics adapters are supported via the EVDI driver:
-#
-# 1. In-kernel DRM_EVDI is NOT used (staging, often outdated)
-# 2. Official evdi is cloned from: https://github.com/DisplayLink/evdi.git
-# 3. Clone location: /tmp/evdi (cleaned up after build)
-# 4. Built against the newly compiled kernel (not running kernel)
-# 5. Installed to /lib/modules/<version>/extra/evdi.ko
-#
-# Build sequence:
-#   a) Kernel compiled with LTO
-#   b) Kernel modules installed
-#   c) evdi cloned to /tmp/evdi
-#   d) evdi built with: make KVER=<new-kernel-version>
-#   e) evdi installed with: make install
-#   f) /tmp/evdi cleaned up
-#
-# Required kernel configs (kept enabled):
-#   - CONFIG_DRM (Direct Rendering Manager)
-#   - CONFIG_FB (Framebuffer support)
-#   - CONFIG_USB (USB core)
-#
-# Disabled legacy DisplayLink drivers (replaced by EVDI):
-#   - FB_UDLFB (old framebuffer driver)
-#   - USB_UDL (old USB driver)
-#   - DRM_UDL (old DRM driver)
-#
-# ============================================================================
-# EXPECTED PERFORMANCE GAINS
-# ============================================================================
-#
-# Estimated improvements over a generic distro kernel:
-#
-# | Category                    | Est. Gain | Notes                        |
-# |-----------------------------|-----------|------------------------------|
-# | CPU mitigations disabled    | 5-30%     | Syscall-heavy workloads      |
-# | LTO (ThinLTO)               | 5-10%     | Whole-program optimization   |
-# | Native CPU tuning           | 2-5%      | Kaby Lake-specific codegen   |
-# | Debug/tracing disabled      | 1-3%      | Less overhead in hot paths   |
-# | Smaller kernel image        | N/A       | Faster boot, less RAM        |
-# | Fewer drivers loaded        | N/A       | Faster boot, cleaner lsmod   |
-#
-# Overall: 10-40% improvement for compute-bound and syscall-heavy workloads.
-# Actual gains depend on specific workload characteristics.
-#
-# Boot time: Significantly faster due to fewer drivers probing.
-# Memory: Reduced kernel footprint (~50-100MB less).
-#
-# ============================================================================
-# KNOWN COMPATIBILITY ISSUES / LIMITATIONS
-# ============================================================================
-#
-# 1. NO VIRTUALIZATION GUEST SUPPORT
-#    - Cannot run this kernel inside VMs (KVM/Xen/Hyper-V/VMware)
-#    - Bare metal only
-#
-# 2. NO NETWORK FILESYSTEM SUPPORT
-#    - NFS, CIFS/SMB, 9P disabled
-#    - Mount network shares via FUSE alternatives if needed
-#
-# 3. LIMITED FILESYSTEM SUPPORT
-#    - Only EXT4, VFAT, OverlayFS, tmpfs
-#    - No BTRFS, XFS, ZFS, NTFS (use FUSE)
-#
-# 4. NO HIBERNATION
-#    - Suspend-to-RAM (S3) works
-#    - Suspend-to-disk (S4/hibernate) disabled
-#
-# 5. SINGLE NETWORK HARDWARE
-#    - Only Intel Ethernet and Atheros WiFi drivers
-#    - Other NICs/WiFi will not work (no drivers)
-#
-# 6. NO SECURITY HARDENING
-#    - Do not use on untrusted networks
-#    - Do not run untrusted code
-#    - See Security Trade-offs section
-#
-# 7. USB DISPLAYLINK ONLY
-#    - Internal Intel GPU + USB DisplayLink adapters
-#    - No discrete GPU support (AMD/NVIDIA removed)
-#
-# 8. DOCKER SPECIFIC
-#    - docker-compose, Swarm, Kubernetes all work
-#    - Container networking fully functional
-#    - SECCOMP sandboxing works (kept enabled)
-#
-# ============================================================================
-# USAGE
-# ============================================================================
-#
-# Prerequisites:
-#   - Clang 19 (apt install clang-19 lld-19 llvm-19)
-#   - Kernel source in current directory (make mrproper && make defconfig)
-#   - Root access for module/kernel installation
-#
-# Run:
-#   ./build.sh
-#
-# After completion:
-#   - New kernel installed in /boot
-#   - Modules in /lib/modules/<version>
-#   - EVDI module built and installed
-#   - Run: sudo update-grub && sudo reboot
-#
-# ============================================================================
 
 set -e
+
+# Remove all custom 6.18 kernels from /boot (keeps Ubuntu 6.14 kernels)
+sudo rm -f /boot/*6.18.0*
+
+# Remove all custom 6.18 modules
+sudo rm -rf /lib/modules/6.18.0*
+
+# Update GRUB
+sudo update-grub
 
 LLVM_VERSION="-19"
 JOBS=$(nproc)
@@ -257,18 +18,27 @@ echo "=== Maximum Performance Kernel Build ==="
 echo "Using LLVM 19 toolchain with $JOBS parallel jobs"
 echo ""
 
+#######################################
+# ENSURE CONFIG AND GENERATED HEADERS EXIST
+#######################################
+# Create .config from running kernel if it doesn't exist
+if [ ! -f .config ]; then
+    echo "[*] No .config found, copying from running kernel..."
+    cp /boot/config-$(uname -r) .config
+    echo "[+] Created .config from /boot/config-$(uname -r)"
+fi
+
+# Ensure generated/autoconf.h exists (required for builds after make mrproper)
+if [ ! -f include/generated/autoconf.h ]; then
+    echo "[*] Generated headers missing, running olddefconfig..."
+    make LLVM=$LLVM_VERSION olddefconfig
+    echo "[+] Generated headers created"
+fi
+
 ./scripts/config --disable HYPERV
 ./scripts/config --disable ANDROID_BINDER_IPC
 ./scripts/config --disable ANDROID_BINDERFS
-./scripts/config --disable IKHEADERS
-
-# Create .config from running kernel if it doesn't exist                                                                  
-if [ ! -f .config ]; then                                                                                                 
-    echo "[*] No .config found, copying from running kernel..."                                                           
-    cp /boot/config-$(uname -r) .config                                                                                   
-    make LLVM=$LLVM_VERSION olddefconfig                                                                                  
-    echo "[+] Created .config from /boot/config-$(uname -r)"                                                              
-fi   
+./scripts/config --disable IKHEADERS   
 
 # Backup current config
 cp .config .config.backup.$(date +%Y%m%d_%H%M%S)
