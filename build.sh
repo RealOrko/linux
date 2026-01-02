@@ -444,8 +444,11 @@ echo "[*] Disabling debug options..."
 # Disable Magic SysRq (emergency keys not needed, slight security/overhead)
 ./scripts/config --disable MAGIC_SYSRQ
 
-# Disable relay filesystem (used by tracing tools which are disabled)
-./scripts/config --disable RELAY
+# RELAY - KEEP ENABLED (required by i915 GPU driver)
+# Although relay is used by tracing, i915 also uses it for GPU error capture.
+# Disabling this will silently prevent DRM_I915 from being enabled!
+# ./scripts/config --disable RELAY
+./scripts/config --enable RELAY
 
 # Disable kernel symbol table (debugging aid, adds kernel size)
 ./scripts/config --disable KALLSYMS
@@ -623,12 +626,15 @@ echo "[*] Disabling i915 error capture..."
 echo "[*] Enabling EFI boot support..."
 ./scripts/config --enable EFI
 ./scripts/config --enable EFI_STUB
+./scripts/config --enable FB_EFI            # Early framebuffer before i915 loads
 
 #######################################
 # INTEL GPU (i915 for HD Graphics 620)
 #######################################
 echo "[*] Enabling Intel i915 GPU driver..."
 ./scripts/config --enable DRM_I915
+./scripts/config --enable BACKLIGHT_CLASS_DEVICE  # Laptop backlight control
+./scripts/config --enable ACPI_VIDEO              # ACPI video extensions
 
 #######################################
 # DISPLAYLINK / USB DISPLAY CONFIGURATION
