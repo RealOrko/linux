@@ -282,6 +282,12 @@ echo "[*] Ensuring module support is enabled..."
 ./scripts/config --enable MODULE_UNLOAD
 
 #######################################
+# STORAGE DRIVERS (NVMe required for boot!)
+#######################################
+echo "[*] Enabling NVMe storage driver..."
+./scripts/config --enable BLK_DEV_NVME
+
+#######################################
 # CPU-SPECIFIC OPTIMIZATIONS
 #######################################
 echo "[*] Enabling native CPU optimizations..."
