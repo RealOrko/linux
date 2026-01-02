@@ -282,6 +282,13 @@ echo "[*] Ensuring module support is enabled..."
 ./scripts/config --enable MODULE_UNLOAD
 
 #######################################
+# PCI SUBSYSTEM (required for all hardware!)
+#######################################
+echo "[*] Enabling PCI subsystem..."
+./scripts/config --enable PCI
+./scripts/config --enable PCI_MSI
+
+#######################################
 # STORAGE DRIVERS (NVMe required for boot!)
 #######################################
 echo "[*] Enabling NVMe storage driver..."
@@ -632,6 +639,8 @@ echo "[*] Enabling EFI boot support..."
 # INTEL GPU (i915 for HD Graphics 620)
 #######################################
 echo "[*] Enabling Intel i915 GPU driver..."
+./scripts/config --enable INTEL_GTT               # Intel Graphics Translation Table (required by i915)
+./scripts/config --enable ACPI_WMI                # WMI (required by i915 on ACPI systems)
 ./scripts/config --enable DRM_I915
 ./scripts/config --enable BACKLIGHT_CLASS_DEVICE  # Laptop backlight control
 ./scripts/config --enable ACPI_VIDEO              # ACPI video extensions
