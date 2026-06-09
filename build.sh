@@ -1034,7 +1034,8 @@ echo "[*] Disabling USB gadget/device mode..."
 #######################################
 echo "[*] Disabling non-Intel sound drivers..."
 ./scripts/config --disable SND_SOC
-./scripts/config --disable SND_USB_AUDIO
+# USB audio is required per HARDWARE_INVENTORY.md (DisplayLink dock audio, Blue Yeti mic)
+./scripts/config --module SND_USB_AUDIO
 ./scripts/config --disable SND_FIREWIRE
 ./scripts/config --disable SND_PCMCIA
 ./scripts/config --disable SND_SPARC

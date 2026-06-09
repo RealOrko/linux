@@ -163,6 +163,14 @@ CONFIG_USB_STORAGE=y
 | USB ID | 17e9:436e |
 | Driver | snd-usb-audio |
 
+### USB Microphone (Blue Yeti)
+| Property | Value |
+|----------|-------|
+| Device | Blue Yeti Stereo Microphone |
+| USB ID | b58e:9e84 |
+| Driver | snd-usb-audio |
+| Connection | Via Dell D3100 dock USB hub |
+
 ### Required Kernel Options for Audio
 ```
 CONFIG_SOUND=y
@@ -170,7 +178,7 @@ CONFIG_SND=y
 CONFIG_SND_PCI=y
 CONFIG_SND_HDA_INTEL=y
 CONFIG_SND_HDA_CODEC_REALTEK=y
-CONFIG_SND_USB_AUDIO=y
+CONFIG_SND_USB_AUDIO=m
 ```
 
 ---
